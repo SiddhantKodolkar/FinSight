@@ -3,9 +3,9 @@
 import { createContext, useState, useEffect, useContext, use } from "react";
 
 type User = {
-  id: number;
-  email: string;
-  name: string; 
+  user_id: number;
+  user_email: string;
+  user_name: string; 
 };
 
 type UserContextType = {

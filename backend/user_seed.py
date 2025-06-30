@@ -40,9 +40,9 @@ def create_users_and_data():
     for i in range(10):
         # Create user
         user = User(
-            name=fake.name(),
-            email=fake.unique.email(),
-            is_premium=False
+            user_name=fake.name(),
+            user_email=fake.unique.email(),
+            user_is_premium=False
         )
         session.add(user)
         session.commit()
@@ -50,17 +50,17 @@ def create_users_and_data():
         accounts = []
 
         # Checking + Savings
-        checking = Account(user_id=user.id, name=random.choice(CHECKING_OPTIONS), type="checking", balance=0.0)
-        savings = Account(user_id=user.id, name=random.choice(SAVINGS_OPTIONS), type="savings", balance=0.0)
+        checking = Account(user_id=user.user_id, account_name=random.choice(CHECKING_OPTIONS), account_type="checking", account_balance=0.0)
+        savings = Account(user_id=user.user_id, account_name=random.choice(SAVINGS_OPTIONS), account_type="savings", account_balance=0.0)
         accounts.extend([checking, savings])
 
         # Two credit accounts
         for _ in range(2):
             credit = Account(
-                user_id=user.id,
-                name=random.choice(CREDIT_OPTIONS),
-                type="credit",
-                balance=round(random.uniform(-50, 0), 2)
+                user_id=user.user_id,
+                account_name=random.choice(CREDIT_OPTIONS),
+                account_type="credit",
+                account_balance=round(random.uniform(-50, 0), 2)
             )
             accounts.append(credit)
 
@@ -76,21 +76,20 @@ def create_users_and_data():
             amount = round(random.uniform(5, 300), 2)
             txn_date = date.today() - timedelta(days=random.randint(0, 30))
 
-            # Add transaction
             txn = Transaction(
-                account_id=account.id,
-                name=name,
-                amount=amount,
-                category=category,
-                date=txn_date
+                account_id=account.account_id,
+                transaction_name=name,
+                transaction_amount=amount,
+                transaction_category=category,
+                transaction_date=txn_date
             )
             session.add(txn)
 
-            # Update account balance (mock)
-            if account.type == "credit":
-                account.balance -= amount
+            # Adjust account balance
+            if account.account_type == "credit":
+                account.account_balance -= amount
             else:
-                account.balance += amount
+                account.account_balance += amount
 
         session.commit()
 
