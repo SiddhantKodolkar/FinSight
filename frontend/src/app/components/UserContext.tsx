@@ -1,11 +1,12 @@
 // context/UserContext.tsx
 'use client';
-import { createContext, useState, useEffect, useContext, use } from "react";
+import { createContext, useState, useEffect, useContext } from "react";
 
 type User = {
   user_id: number;
   user_email: string;
-  user_name: string; 
+  user_name: string;
+  user_is_premium: boolean;
 };
 
 type UserContextType = {

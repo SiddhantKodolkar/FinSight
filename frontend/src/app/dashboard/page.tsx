@@ -1,8 +1,9 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from "react";
 import { useUser } from "../components/UserContext";
 import { useRouter } from "next/navigation";
+import TransactionTable from "../components/TransactionTable";
 
 type Account = {
   account_id: number;
@@ -11,34 +12,48 @@ type Account = {
   account_balance: number;
 };
 
+type Transaction = {
+  transaction_id: number;
+  account_id: number;
+  transaction_name: string;
+  transaction_amount: number;
+  transaction_category: string;
+  transaction_date: string;
+};
+
 export default function Dashboard() {
   const { user, logout } = useUser();
   const router = useRouter();
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [showTable, setShowTable] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     if (!user) {
       router.push("/");
     } else {
       fetchAccounts();
+      fetchTransactions();
     }
   }, [user]);
 
   const fetchAccounts = async () => {
     try {
-      const res = await fetch(
-        `http://localhost:8000/users/${user?.user_id}/accounts`
-      );
-      if (!res.ok) throw new Error("Failed to fetch accounts");
-
+      const res = await fetch(`http://localhost:8000/users/${user?.user_id}/accounts`);
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setAccounts(data);
-      } else {
-        console.error("Expected array but got:", data);
-      }
+      setAccounts(data);
     } catch (err) {
       console.error("Error fetching accounts:", err);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    try {
+      const res = await fetch(`http://localhost:8000/users/${user?.user_id}/transactions`);
+      const data = await res.json();
+      setTransactions(data);
+    } catch (err) {
+      console.error("Error fetching transactions:", err);
     }
   };
 
@@ -49,21 +64,36 @@ export default function Dashboard() {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold">
+      <h1 className="text-2xl font-bold mb-4">
         Welcome, {user?.user_name || user?.user_email}!
       </h1>
 
       {/* 💳 Account Boxes */}
-      <div className="grid grid-cols-2 gap-4 mt-6">
-        {accounts.map((account) => (
-          <div key={account.account_id} className="border p-4 rounded shadow">
-            <h2 className="text-lg font-semibold">
-              {account.account_type.toUpperCase()}
-            </h2>
-            <p className="text-sm text-gray-600">{account.account_name}</p>
-            <p className="text-xl font-bold mt-2">
-              ${account.account_balance.toFixed(2)}
-            </p>
+      <div className="grid grid-cols-2 gap-4">
+        {accounts.map((acc) => (
+          <div key={acc.account_id} className="border p-4 rounded shadow">
+            <h2 className="text-lg font-semibold">{acc.account_type.toUpperCase()}</h2>
+            <p className="text-sm text-gray-600">{acc.account_name}</p>
+            <p className="text-xl font-bold mt-2">${acc.account_balance.toFixed(2)}</p>
+
+            <button
+              onClick={() =>
+                setShowTable((prev) => ({
+                  ...prev,
+                  [acc.account_id]: !prev[acc.account_id],
+                }))
+              }
+              className="bg-blue-500 text-white px-3 py-1 rounded mt-3"
+            >
+              {showTable[acc.account_id] ? "Hide Transactions" : "Show Transactions"}
+            </button>
+
+            {showTable[acc.account_id] && (
+              <TransactionTable
+                accountId={acc.account_id}
+                allTransactions={transactions}
+              />
+            )}
           </div>
         ))}
       </div>
