@@ -22,7 +22,7 @@ type Transaction = {
 };
 
 export default function Dashboard() {
-  const { user, logout } = useUser();
+  const { user, logout, refreshUser } = useUser();
   const router = useRouter();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -32,9 +32,8 @@ export default function Dashboard() {
     if (!user) {
       router.push("/");
     } else {
-      fetchAccounts();
-      fetchTransactions();
-    }
+        fetchAccounts();
+        fetchTransactions();    }
   }, [user]);
 
   const fetchAccounts = async () => {
@@ -57,6 +56,26 @@ export default function Dashboard() {
     }
   };
 
+  const handleUpgrade = async () => {
+    if (!user?.user_email) {
+      alert("User email not found");
+      return;
+    }
+
+    const res = await fetch("http://localhost:8000/create-checkout-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: user.user_email }),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      window.location.href = data.checkout_url;
+    } else {
+      alert(data.detail || "Checkout failed");
+    }
+  };
+
   const handleLogout = () => {
     logout();
     router.push("/");
@@ -68,7 +87,6 @@ export default function Dashboard() {
         Welcome, {user?.user_name || user?.user_email}!
       </h1>
 
-      {/* 💳 Account Boxes */}
       <div className="grid grid-cols-2 gap-4">
         {accounts.map((acc) => (
           <div key={acc.account_id} className="border p-4 rounded shadow">
@@ -89,10 +107,7 @@ export default function Dashboard() {
             </button>
 
             {showTable[acc.account_id] && (
-              <TransactionTable
-                accountId={acc.account_id}
-                allTransactions={transactions}
-              />
+              <TransactionTable accountId={acc.account_id} allTransactions={transactions} />
             )}
           </div>
         ))}
@@ -104,6 +119,22 @@ export default function Dashboard() {
       >
         Logout
       </button>
+
+      {user?.user_is_premium ? (
+        <button
+          onClick={() => router.push("/premium-insights")}
+          className="bg-purple-600 text-white px-4 py-2 rounded mt-4"
+        >
+          See Premium Insights
+        </button>
+      ) : (
+        <button
+          onClick={handleUpgrade}
+          className="bg-yellow-500 text-black px-4 py-2 rounded mt-4"
+        >
+          Upgrade to Premium
+        </button>
+      )}
     </div>
   );
 }

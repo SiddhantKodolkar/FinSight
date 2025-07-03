@@ -1,5 +1,5 @@
 // context/UserContext.tsx
-'use client';
+"use client";
 import { createContext, useState, useEffect, useContext } from "react";
 
 type User = {
@@ -13,6 +13,7 @@ type UserContextType = {
   user: User | null;
   login: (user: User) => void;
   logout: () => void;
+  refreshUser: (userId: number) => Promise<void>;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -35,8 +36,18 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.removeItem("user");
   };
 
+  const refreshUser = async (userId: number) => {
+    const res = await fetch(`http://localhost:8000/users/${userId}`);
+    const updatedUser = await res.json();
+    console.log("Refreshed user from backend:", updatedUser);
+    if (updatedUser) {
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    }
+  };
+
   return (
-    <UserContext.Provider value={{ user, login, logout }}>
+    <UserContext.Provider value={{ user, login, logout, refreshUser }}>
       {children}
     </UserContext.Provider>
   );
