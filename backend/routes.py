@@ -4,11 +4,11 @@ from sqlalchemy import func
 from pydantic import BaseModel
 from db import SessionLocal
 from models import User, Account, Transaction
-
+from sqlalchemy.sql import extract
 from fastapi import HTTPException
 from pydantic import BaseModel
 from passlib.context import CryptContext
-
+from datetime import datetime, timedelta
 import os
 import stripe
 
@@ -190,3 +190,82 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             print("⚠️ No user found with that email")
 
     return {"status": "success"}
+
+
+@router.get("/users/{user_id}/insights")
+def get_user_insights(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    accounts = db.query(Account).filter(Account.user_id == user_id).all()
+    account_ids = [acc.account_id for acc in accounts]
+
+    insights = {}
+
+    # Weekly spending with week range formatting and % change
+    raw_weeks = db.query(
+        func.date_trunc('week', Transaction.transaction_date).label("week_start"),
+        func.sum(Transaction.transaction_amount).label("total")
+    ).filter(Transaction.account_id.in_(account_ids)).group_by("week_start").order_by("week_start").all()
+
+    weekly_spending = []
+    for i, row in enumerate(raw_weeks):
+        start = row.week_start
+        end = start + timedelta(days=6)
+        total = round(row.total, 2)
+
+        percent_change = None
+        if i > 0:
+            prev_total = round(raw_weeks[i - 1].total, 2)
+            if prev_total > 0:
+                percent_change = round(((total - prev_total) / prev_total) * 100, 1)
+
+        weekly_spending.append({
+            "range": f"{start.strftime('%b %d')} – {end.strftime('%b %d')}",
+            "total": total,
+            "change": percent_change
+        })
+
+    insights["weekly_spending"] = weekly_spending
+
+    # Top categories
+    category_data = db.query(
+        Transaction.transaction_category,
+        func.sum(Transaction.transaction_amount).label("total")
+    ).filter(Transaction.account_id.in_(account_ids)).group_by(Transaction.transaction_category).order_by(func.sum(Transaction.transaction_amount).desc()).limit(5).all()
+
+    insights["top_categories"] = [
+        {"category": row.transaction_category, "total": round(row.total, 2)} for row in category_data
+    ]
+
+    # Top merchants
+    merchant_data = db.query(
+        Transaction.transaction_name,
+        func.sum(Transaction.transaction_amount).label("total")
+    ).filter(Transaction.account_id.in_(account_ids)).group_by(Transaction.transaction_name).order_by(func.sum(Transaction.transaction_amount).desc()).limit(5).all()
+
+    insights["top_merchants"] = [
+        {"merchant": row.transaction_name, "total": round(row.total, 2)} for row in merchant_data
+    ]
+
+    # Average transaction
+    avg_value = db.query(func.avg(Transaction.transaction_amount)).filter(Transaction.account_id.in_(account_ids)).scalar()
+    insights["average_transaction"] = round(avg_value or 0.0, 2)
+
+    # Flag unusually expensive transactions
+    expensive = db.query(Transaction).filter(
+        Transaction.account_id.in_(account_ids),
+        Transaction.transaction_amount > 250
+    ).order_by(Transaction.transaction_amount.desc()).limit(5).all()
+
+    insights["expensive_transactions"] = [
+        {
+            "name": tx.transaction_name,
+            "amount": round(tx.transaction_amount, 2),
+            "category": tx.transaction_category,
+            "date": tx.transaction_date
+        } for tx in expensive
+    ]
+
+    return insights
