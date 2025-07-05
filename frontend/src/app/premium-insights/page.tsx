@@ -11,7 +11,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
+const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#d0ed57"];
 
 type Insight = {
   weekly_spending: {
@@ -100,27 +104,42 @@ export default function PremiumInsights() {
       </section>
 
       {/* Top Categories */}
-      <section className="mb-6">
+      {/* Top Categories */}
+      <section className="mb-8">
         <h2 className="text-lg font-semibold mb-2">Top Categories</h2>
-        <ul className="list-disc pl-6">
-          {insights.top_categories.map((cat, i) => (
-            <li key={i}>
-              {cat.category}: ${cat.total.toFixed(2)}
-            </li>
-          ))}
-        </ul>
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            <Pie
+              data={insights.top_categories}
+              dataKey="total"
+              nameKey="category"
+              outerRadius={100}
+              label
+            >
+              {insights.top_categories.map((_, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
+              ))}
+            </Pie>
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
       </section>
 
       {/* Top Merchants */}
-      <section className="mb-6">
+      {/* Top Merchants */}
+      <section className="mb-8">
         <h2 className="text-lg font-semibold mb-2">Top Merchants</h2>
-        <ul className="list-disc pl-6">
-          {insights.top_merchants.map((m, i) => (
-            <li key={i}>
-              {m.merchant}: ${m.total.toFixed(2)}
-            </li>
-          ))}
-        </ul>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={insights.top_merchants}>
+            <XAxis dataKey="merchant" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="total" fill="#8884d8" />
+          </BarChart>
+        </ResponsiveContainer>
       </section>
 
       {/* Average Transaction */}
